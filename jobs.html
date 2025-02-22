@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document Analysis Jobs</title>
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Global Box Sizing */
+      * {
+        box-sizing: border-box;
+      }
+      /* Global Styles */
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: "Roboto", sans-serif;
+        /* Updated background to the teal swirl gradient */
+        background: linear-gradient(135deg, #60c3ca, #9bd9d7);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      /* Container styling */
+      .container {
+        background: #ffffff;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        width: 90%;
+        max-width: 800px;
+      }
+      /* Header Area */
+      #header-area {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+      #header-area h2 {
+        margin: 0;
+        color: #333333;
+      }
+      /* Back button in header */
+      #back-to-list {
+        padding: 12px;
+        background-color: black; /* Changed background to black */
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-bottom: 10px;
+        display: none;
+      }
+      #back-to-list:hover {
+        background-color: #333; /* Slightly lighter on hover */
+      }
+      /* Job List Styling */
+      .job-list {
+        list-style: none;
+        padding: 0;
+      }
+      .job-item {
+        padding: 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        background: #ffffff;
+        transition: background-color 0.3s ease;
+      }
+      .job-item:hover {
+        background-color: #f9f9f9;
+      }
+      .job-status {
+        font-weight: bold;
+        color: #4caf50;
+      }
+      .hidden {
+        display: none;
+      }
+      /* Button Styling */
+      button {
+        padding: 12px;
+        background-color: #4caf50;
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 10px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      .close-btn {
+        background-color: #f44336;
+        margin-left: 10px;
+      }
+      /* Form Elements */
+      select,
+      input {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 16px;
+      }
+      /* Modal Styling */
+      .modal {
+        display: none; /* Hidden by default */
+        position: fixed;
+        z-index: 10;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.4);
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        text-align: center;
+      }
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 16px;
+        resize: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="header-area">
+        <button id="back-to-list">Back to Job List</button>
+        <h2 id="job-list-header">Your Jobs</h2>
+      </div>
+      <ul id="job-list" class="job-list"></ul>
+
+      <div id="job-detail" class="hidden">
+        <h3>Job Detail</h3>
+        <p>
+          <strong>Job ID:</strong>
+          <span id="detail-job-id"></span>
+        </p>
+        <p>
+          <strong>Status:</strong>
+          <span id="detail-job-status" class="job-status"></span>
+        </p>
+
+        <div id="prediction-section" class="hidden">
+          <div>
+            <textarea readonly cols="70" rows="10">
+It is predicted that...</textarea
+            >
+          </div>
+          <p id="prediction-text" style="font-weight: bold; margin: 10px 0"></p>
+          <button id="accept-btn">Accept Prediction</button>
+          <button id="reject-btn" class="close-btn">Reject Prediction</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Selection Modal -->
+    <div id="project-modal" class="modal">
+      <div class="modal-content">
+        <h3>Project Storage</h3>
+        <p>Select an existing project or create a new one:</p>
+        <select id="project-select">
+          <option value="">--Select Project--</option>
+          <option value="Project A">Project A</option>
+          <option value="Project B">Project B</option>
+          <option value="new">Create New Project</option>
+        </select>
+        <input
+          type="text"
+          id="new-project-name"
+          placeholder="Enter new project name"
+          class="hidden"
+        />
+        <button id="submit-project">Submit</button>
+        <button id="close-project-modal" class="close-btn">Cancel</button>
+      </div>
+    </div>
+
+    <script>
+      let jobs = [
+        {
+          id: "ID:12345",
+          metadata: { classification: "HR" },
+          status: "Processed",
+          prediction: "Classified as HR document",
+        },
+      ];
+      let selectedJob = null;
+
+      function updateJobList() {
+        const jobList = document.getElementById("job-list");
+        jobList.innerHTML = "";
+        jobs.forEach((job) => {
+          let li = document.createElement("li");
+          li.className = "job-item";
+          li.dataset.jobId = job.id;
+          li.innerHTML = `<span><strong>${job.id}</strong> - ${job.metadata.classification}</span>
+                            <span class="job-status">${job.status}</span>`;
+          li.addEventListener("click", () => showJobDetail(job.id));
+          jobList.appendChild(li);
+        });
+      }
+
+      function showJobDetail(jobId) {
+        selectedJob = jobs.find((j) => j.id === jobId);
+        if (!selectedJob) return;
+        // Hide job list header and show back button
+        document.getElementById("job-list-header").style.display = "none";
+        document.getElementById("back-to-list").style.display = "block";
+
+        document.getElementById("detail-job-id").textContent = selectedJob.id;
+        document.getElementById("detail-job-status").textContent =
+          selectedJob.status;
+
+        const predictionSection = document.getElementById("prediction-section");
+        if (selectedJob.status === "Processed" && selectedJob.prediction) {
+          document.getElementById("prediction-text").textContent =
+            selectedJob.prediction;
+          predictionSection.classList.remove("hidden");
+        } else {
+          predictionSection.classList.add("hidden");
+        }
+        document.getElementById("job-detail").classList.remove("hidden");
+        document.getElementById("job-list").style.display = "none";
+      }
+
+      document.getElementById("back-to-list").addEventListener("click", () => {
+        // Hide back button and show header again
+        document.getElementById("back-to-list").style.display = "none";
+        document.getElementById("job-list-header").style.display = "block";
+        document.getElementById("job-detail").classList.add("hidden");
+        document.getElementById("job-list").style.display = "block";
+      });
+
+      document.getElementById("reject-btn").addEventListener("click", () => {
+        selectedJob.status = "Rejected";
+        updateJobList();
+        alert("Prediction Rejected.");
+        // Reset view to job list
+        document.getElementById("back-to-list").style.display = "none";
+        document.getElementById("job-list-header").style.display = "block";
+        document.getElementById("job-detail").classList.add("hidden");
+        document.getElementById("job-list").style.display = "block";
+      });
+
+      document.getElementById("accept-btn").addEventListener("click", () => {
+        document.getElementById("project-modal").style.display = "flex";
+      });
+
+      document
+        .getElementById("close-project-modal")
+        .addEventListener("click", () => {
+          document.getElementById("project-modal").style.display = "none";
+        });
+
+      document
+        .getElementById("project-select")
+        .addEventListener("change", function (e) {
+          document
+            .getElementById("new-project-name")
+            .classList.toggle("hidden", e.target.value !== "new");
+        });
+
+      document
+        .getElementById("submit-project")
+        .addEventListener("click", function () {
+          const selectedProject =
+            document.getElementById("project-select").value;
+          if (!selectedProject) {
+            alert("Please select a project.");
+            return;
+          }
+          selectedJob.status = "Accepted to Project X";
+          updateJobList();
+          alert(
+            "Document linked to " +
+              (selectedProject === "new"
+                ? document.getElementById("new-project-name").value
+                : selectedProject)
+          );
+          document.getElementById("project-modal").style.display = "none";
+          // Return to job list view
+          document.getElementById("back-to-list").style.display = "none";
+          document.getElementById("job-list-header").style.display = "block";
+          document.getElementById("job-detail").classList.add("hidden");
+          document.getElementById("job-list").style.display = "block";
+        });
+
+      updateJobList();
+    </script>
+  </body>
+</html>

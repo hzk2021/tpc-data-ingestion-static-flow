@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document Submission - Document Analysis</title>
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Global Styles */
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: "Roboto", sans-serif;
+        /* Updated background to the teal swirl gradient */
+        background: linear-gradient(135deg, #60c3ca, #9bd9d7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+      /* Container styling */
+      .container {
+        background: #ffffff;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        width: 90%;
+        max-width: 800px;
+      }
+      h2,
+      h3 {
+        color: #333333;
+        text-align: center;
+      }
+      /* Upload area */
+      .upload-area {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        margin-bottom: 20px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+      .upload-area:hover {
+        background-color: #f0f0f0;
+      }
+      input[type="file"] {
+        display: none;
+      }
+      /* File list */
+      #file-list {
+        list-style: none;
+        padding: 0;
+        margin-bottom: 20px;
+      }
+      #file-list li {
+        padding: 8px;
+        background: #f9f9f9;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        margin-bottom: 8px;
+      }
+      /* Form elements */
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #555;
+      }
+      select,
+      input[type="text"],
+      input[type="email"],
+      textarea {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 16px;
+        color: #333;
+      }
+      .checkbox-group {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .checkbox-group label {
+        margin-bottom: 0;
+        font-weight: normal;
+        color: #555;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background-color: #4caf50;
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 10px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      /* Modal Styling */
+      .modal {
+        display: none; /* Hidden by default */
+        position: fixed;
+        z-index: 10;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.4);
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Document Submission & Processing</h2>
+      <div class="upload-area" id="upload-area">
+        Drag & drop PDF(s) here or click to select.
+        <input type="file" id="file-input" accept="application/pdf" multiple />
+      </div>
+      <ul id="file-list"></ul>
+
+      <h3>Metadata Submission</h3>
+      <form id="metadata-form">
+        <label for="database-select">Select Database:</label>
+        <select id="database-select" required>
+          <option value="">--Select Database--</option>
+          <option value="db1">Database 1</option>
+          <option value="db2">Database 2</option>
+        </select>
+
+        <label for="security-level">Security Level:</label>
+        <select id="security-level" required>
+          <option value="">--Select Security Level--</option>
+          <option value="public">Public</option>
+          <option value="private">Private</option>
+          <option value="restricted">Restricted</option>
+        </select>
+
+        <label>Roles Allowed Access:</label>
+        <div class="checkbox-group">
+          <label
+            ><input type="checkbox" name="roles" value="admin" /> Admin</label
+          >
+          <label
+            ><input type="checkbox" name="roles" value="manager" />
+            Manager</label
+          >
+          <label
+            ><input type="checkbox" name="roles" value="staff" /> Staff</label
+          >
+        </div>
+
+        <label for="classification">Document Classification:</label>
+        <select id="classification" required>
+          <option value="">--Select Classification--</option>
+          <option value="HR">HR</option>
+          <option value="investment">Investment</option>
+          <option value="legal">Legal</option>
+        </select>
+        <button type="submit">Upload document(s)</button>
+      </form>
+    </div>
+
+    <script>
+      // import "https://tomashubelbauer.github.io/github-pages-local-storage/index.js";
+
+      // Check if user is logged in using sessionStorage
+      if (!sessionStorage.getItem("userRole")) {
+        window.location.href = "login.html";
+      }
+
+      let uploadedFiles = [];
+      const fileList = document.getElementById("file-list");
+      const uploadArea = document.getElementById("upload-area");
+      const fileInput = document.getElementById("file-input");
+
+      uploadArea.addEventListener("click", () => fileInput.click());
+
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadArea.style.backgroundColor = "#f0f0f0";
+      });
+      uploadArea.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        uploadArea.style.backgroundColor = "";
+      });
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadArea.style.backgroundColor = "";
+        handleFiles(e.dataTransfer.files);
+      });
+
+      fileInput.addEventListener("change", () => {
+        handleFiles(fileInput.files);
+      });
+
+      function handleFiles(files) {
+        for (let file of files) {
+          if (file.type === "application/pdf") {
+            // Store file name only for simulation
+            uploadedFiles.push(file.name);
+            let li = document.createElement("li");
+            li.textContent = file.name;
+            fileList.appendChild(li);
+          } else {
+            alert("Only PDF files are allowed.");
+          }
+        }
+      }
+
+      document
+        .getElementById("metadata-form")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const database = document.getElementById("database-select").value;
+          const security = document.getElementById("security-level").value;
+          const classification =
+            document.getElementById("classification").value;
+          const roles = Array.from(
+            document.querySelectorAll('input[name="roles"]:checked')
+          ).map((el) => el.value);
+
+          if (!database || !security || !classification || roles.length === 0) {
+            alert("Please complete all metadata selections.");
+            return;
+          }
+
+          if (uploadedFiles.length === 0) {
+            alert("Please upload at least one PDF file.");
+            return;
+          }
+
+          // Create a job object
+          const jobId = "JOB-" + Math.floor(Math.random() * 10000);
+          let job = {
+            id: jobId,
+            status: "Processing",
+            metadata: { database, security, classification, roles },
+            files: uploadedFiles,
+            prediction: null,
+          };
+
+          // Simulate job processing delay (2 seconds)
+          setTimeout(() => {
+            job.status = "Processed";
+            job.prediction =
+              "Prediction: The document is classified as " +
+              classification +
+              ".";
+            // Save job to sessionStorage
+            saveJob(job);
+            // Redirect to jobs page
+            window.location.href = "jobs.html";
+          }, 2000);
+
+          // Save job immediately as processing (optional)
+          saveJob(job);
+        });
+
+      function saveJob(job) {
+        let jobs = JSON.parse(sessionStorage.getItem("jobs")) || [];
+        // Remove any existing job with same id (should not happen)
+        jobs = jobs.filter((j) => j.id !== job.id);
+        jobs.push(job);
+        sessionStorage.setItem("jobs", JSON.stringify(jobs));
+      }
+    </script>
+  </body>
+</html>
