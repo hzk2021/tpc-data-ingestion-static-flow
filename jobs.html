@@ -102,14 +102,6 @@
         background-color: #f44336;
         margin-left: 10px;
       }
-      /* New Project Button Styling */
-      .new-project-btn {
-        background-color: #2196f3;
-        margin-top: 10px;
-      }
-      .new-project-btn:hover {
-        background-color: #1976d2;
-      }
       .modal-buttons {
         margin-top: 15px;
       }
@@ -121,6 +113,14 @@
         border: 1px solid #ccc;
         border-radius: 6px;
         font-size: 16px;
+      }
+      select {
+        padding: 8px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        width: 100%;
+        margin-top: 5px;
       }
       /* Modal Styling */
       .modal {
@@ -137,22 +137,21 @@
       }
       .modal-content {
         background-color: #ffffff;
-        padding: 20px;
+        padding: 25px;
         border-radius: 12px;
         width: 90%;
-        max-width: 400px;
+        max-width: 500px;
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        text-align: left;
+      }
+      .modal-content h3 {
+        margin-top: 0;
         text-align: center;
       }
-      /* Project Options as Checkboxes */
-      #project-options {
-        text-align: left;
-        margin: 15px 0;
-      }
-      #project-options label {
-        display: block;
-        margin-bottom: 8px;
-        cursor: pointer;
+      .modal-description {
+        font-size: 0.95rem;
+        margin-bottom: 15px;
+        text-align: center;
       }
       /* Drag and Drop Boxes Styling */
       #drag-drop-section {
@@ -197,6 +196,64 @@
       #decision-buttons button {
         margin: 0 10px;
       }
+      /* Match Modal List Item Styling */
+      #match-list {
+        margin-top: 10px;
+      }
+      .match-item {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #ddd;
+      }
+      .match-label {
+        font-weight: bold;
+        margin-bottom: 5px;
+        display: block;
+      }
+      .new-project-input {
+        display: none;
+        margin-top: 8px;
+      }
+      /* Toast Styling */
+      #toast {
+        visibility: hidden;
+        min-width: 250px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 4px;
+        padding: 16px;
+        position: fixed;
+        z-index: 100;
+        left: 50%;
+        bottom: 30px;
+        font-size: 17px;
+        transform: translateX(-50%);
+      }
+      #toast.show {
+        visibility: visible;
+        animation: fadein 0.5s, fadeout 0.5s 2.5s;
+      }
+      @keyframes fadein {
+        from {
+          bottom: 0;
+          opacity: 0;
+        }
+        to {
+          bottom: 30px;
+          opacity: 1;
+        }
+      }
+      @keyframes fadeout {
+        from {
+          bottom: 30px;
+          opacity: 1;
+        }
+        to {
+          bottom: 0;
+          opacity: 0;
+        }
+      }
     </style>
   </head>
   <body>
@@ -218,7 +275,7 @@
           <span id="detail-job-status" class="job-status"></span>
         </p>
 
-        <!-- Drag and Drop Section (Reordered) -->
+        <!-- Drag and Drop Section -->
         <div id="drag-drop-section" class="hidden">
           <div class="drag-box" data-status="confirmed">
             <h4>Confirmed</h4>
@@ -234,53 +291,44 @@
           </div>
         </div>
 
-        <!-- Accept & Reject Buttons -->
+        <!-- Decision Buttons -->
         <div id="decision-buttons" class="hidden">
           <button id="accept-btn">Accept Prediction</button>
-          <button id="reject-btn" class="close-btn">Reject Prediction</button>
         </div>
       </div>
     </div>
 
-    <!-- Project Selection Modal -->
-    <div id="project-modal" class="modal">
+    <!-- Confirm Projects Assignment Modal -->
+    <div id="match-modal" class="modal">
       <div class="modal-content">
-        <h3>Project Storage</h3>
-        <p>Select one of the options below:</p>
-        <div id="existing-projects">
-          <p><strong>Existing Projects</strong></p>
-          <div id="project-options">
-            <label>
-              <input type="checkbox" name="project" value="Project A" />
-              Project A
-            </label>
-            <label>
-              <input type="checkbox" name="project" value="Project B" />
-              Project B
-            </label>
-          </div>
-        </div>
-        <hr />
-        <div id="new-project-section">
-          <p><strong>Or Create a New Project</strong></p>
-          <button id="create-new-project-btn" class="new-project-btn">
-            Create New Project
-          </button>
-          <input
-            type="text"
-            id="new-project-name"
-            placeholder="Enter new project name"
-            class="hidden"
-          />
-        </div>
+        <h3>Review Project Assignments</h3>
+        <p class="modal-description">
+          We’ve identified the following items. Please select an existing
+          project or add a new one for each.
+        </p>
+        <div id="match-list"></div>
         <div class="modal-buttons">
-          <button id="submit-project">Submit</button>
-          <button id="close-project-modal" class="close-btn">Cancel</button>
+          <button id="submit-assignment">Confirm Assignments</button>
+          <button id="close-match-modal" class="close-btn">Cancel</button>
         </div>
       </div>
     </div>
+
+    <!-- Toast Notification -->
+    <div id="toast"></div>
 
     <script>
+      // Toast helper function
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.className = "show";
+        setTimeout(() => {
+          toast.className = toast.className.replace("show", "");
+        }, 3000);
+      }
+
+      // Sample job data
       let jobs = [
         {
           id: "ID:12345",
@@ -296,8 +344,21 @@
       let selectedJob = null;
       let draggedItem = null;
 
-      // projectMode can be "existing" or "new"
-      let projectMode = "existing";
+      // Provided list of projects
+      const projectsList = [
+        "2 x 1.2cts (oval) Diamonds (Color D; Clarity VVSI)",
+        "64K",
+        "AiDrivers",
+        "AIFF",
+        "Alliance Offshore Services Pte Ltd (Thailand)",
+        "Alpha Trio",
+        "AMC Platinum",
+        "AMC Platinum China",
+        "Amity",
+        "Ampang Parkville",
+        // ... (rest of the projects) ...
+        "Zhang Daqian, Fishing in Autumn Mountains",
+      ];
 
       function updateJobList() {
         const jobList = document.getElementById("job-list");
@@ -306,8 +367,12 @@
           let li = document.createElement("li");
           li.className = "job-item";
           li.dataset.jobId = job.id;
-          li.innerHTML = `<span><strong>${job.id}</strong> - ${job.metadata.classification}</span>
-                            <span class="job-status">${job.status}</span>`;
+          li.innerHTML = `
+            <span>
+              <strong>${job.id}</strong> - ${job.metadata.classification}
+            </span>
+            <span class="job-status">${job.status}</span>
+          `;
           li.addEventListener("click", () => showJobDetail(job.id));
           jobList.appendChild(li);
         });
@@ -326,10 +391,13 @@
 
         const dragSection = document.getElementById("drag-drop-section");
         const decisionButtons = document.getElementById("decision-buttons");
+
+        // Only show drag/drop and accept button if status is "Processed"
         if (selectedJob.status === "Processed" && selectedJob.predictionItems) {
           document.getElementById("confirmed-list").innerHTML = "";
           document.getElementById("rejected-list").innerHTML = "";
           document.getElementById("needs-confirmation-list").innerHTML = "";
+
           selectedJob.predictionItems.forEach((itemText) => {
             const li = document.createElement("li");
             li.textContent = itemText;
@@ -338,6 +406,7 @@
             li.addEventListener("dragend", dragEnd);
             document.getElementById("needs-confirmation-list").appendChild(li);
           });
+
           dragSection.classList.remove("hidden");
           decisionButtons.classList.remove("hidden");
         } else {
@@ -391,96 +460,171 @@
         box.addEventListener("drop", drop);
       });
 
-      document.getElementById("reject-btn").addEventListener("click", () => {
-        selectedJob.status = "Rejected";
-        updateJobList();
-        alert("Prediction Rejected.");
-        document.getElementById("back-to-list").style.display = "none";
-        document.getElementById("job-list-header").style.display = "block";
-        document.getElementById("job-detail").classList.add("hidden");
-        document.getElementById("job-list").style.display = "block";
-      });
-
+      // Accept Prediction button => open modal with matches
       document.getElementById("accept-btn").addEventListener("click", () => {
-        // Reset to default mode on open.
-        projectMode = "existing";
-        document.getElementById("new-project-name").classList.add("hidden");
-        // Ensure existing project checkboxes are enabled.
-        document.querySelectorAll('input[name="project"]').forEach((chk) => {
-          chk.disabled = false;
-          chk.checked = false;
+        // Simulate API response
+        const apiResponse = {
+          matches: [
+            {
+              user_input: "alpha trio",
+              matched_name: "Alpha Trio",
+            },
+            {
+              user_input: "horizon oil",
+              matched_name: "Horizon Oil",
+            },
+            {
+              user_input: "kkk",
+              matched_name: null,
+            },
+          ],
+        };
+
+        document.querySelector("#match-modal h3").textContent =
+          "Review Project Assignments";
+        document.querySelector(".modal-description").textContent =
+          "We’ve identified the following items. Please select an existing project or add a new one for each.";
+
+        const matchListContainer = document.getElementById("match-list");
+        matchListContainer.innerHTML = "";
+
+        apiResponse.matches.forEach((match, index) => {
+          const container = document.createElement("div");
+          container.className = "match-item";
+
+          // Label with detected value
+          const label = document.createElement("label");
+          label.className = "match-label";
+          label.textContent = `Detected Value: ${match.user_input}`;
+          container.appendChild(label);
+
+          // Create dropdown
+          const select = document.createElement("select");
+          select.dataset.index = index;
+
+          // Default option
+          const defaultOption = document.createElement("option");
+          defaultOption.value = "";
+          defaultOption.textContent = "Select an existing project...";
+          select.appendChild(defaultOption);
+
+          // "Add New Project" option
+          const createNewOption = document.createElement("option");
+          createNewOption.value = "__create_new__";
+          createNewOption.textContent = "Add a new project...";
+          select.appendChild(createNewOption);
+
+          // Populate existing projects
+          projectsList.forEach((project) => {
+            const option = document.createElement("option");
+            option.value = project;
+            option.textContent = project;
+            if (match.matched_name === project) {
+              option.selected = true;
+            }
+            select.appendChild(option);
+          });
+
+          container.appendChild(select);
+
+          // New project input (hidden by default)
+          const newProjectInput = document.createElement("input");
+          newProjectInput.type = "text";
+          newProjectInput.placeholder = "Enter new project name";
+          newProjectInput.className = "new-project-input";
+          container.appendChild(newProjectInput);
+
+          // Toggle input visibility based on selection
+          select.addEventListener("change", (e) => {
+            if (e.target.value === "__create_new__") {
+              newProjectInput.style.display = "block";
+            } else {
+              newProjectInput.style.display = "none";
+            }
+          });
+
+          matchListContainer.appendChild(container);
         });
-        // Reset new project button text.
-        document.getElementById("create-new-project-btn").textContent =
-          "Create New Project";
-        document.getElementById("project-modal").style.display = "flex";
+
+        // Show modal
+        document.getElementById("match-modal").style.display = "flex";
       });
 
+      // Close modal
       document
-        .getElementById("close-project-modal")
+        .getElementById("close-match-modal")
         .addEventListener("click", () => {
-          document.getElementById("project-modal").style.display = "none";
+          document.getElementById("match-modal").style.display = "none";
         });
 
-      // Toggle between existing projects and new project mode.
+      // Submit confirmation
       document
-        .getElementById("create-new-project-btn")
-        .addEventListener("click", function () {
-          const newProjectInput = document.getElementById("new-project-name");
-          if (projectMode === "existing") {
-            // Switch to new project mode:
-            projectMode = "new";
-            newProjectInput.classList.remove("hidden");
-            // Disable existing project checkboxes.
-            document
-              .querySelectorAll('input[name="project"]')
-              .forEach((chk) => {
-                chk.checked = false;
-                chk.disabled = true;
-              });
-            this.textContent = "Use Existing Projects";
-          } else {
-            // Switch back to existing projects mode:
-            projectMode = "existing";
-            newProjectInput.classList.add("hidden");
-            newProjectInput.value = "";
-            // Re-enable checkboxes.
-            document
-              .querySelectorAll('input[name="project"]')
-              .forEach((chk) => {
-                chk.disabled = false;
-              });
-            this.textContent = "Create New Project";
-          }
-        });
+        .getElementById("submit-assignment")
+        .addEventListener("click", () => {
+          const matchItems = document.querySelectorAll(
+            "#match-list .match-item"
+          );
+          let confirmMatches = [];
+          let createProjects = [];
 
-      document
-        .getElementById("submit-project")
-        .addEventListener("click", function () {
-          let selectedValues = [];
-          if (projectMode === "existing") {
-            const checkedBoxes = document.querySelectorAll(
-              'input[name="project"]:checked'
-            );
-            selectedValues = Array.from(checkedBoxes).map((box) => box.value);
-          } else if (projectMode === "new") {
-            const newProjectInput = document.getElementById("new-project-name");
-            if (newProjectInput.value.trim() !== "") {
-              selectedValues = [newProjectInput.value.trim()];
+          for (const item of matchItems) {
+            const label = item.querySelector(".match-label").textContent;
+            const userInput = label.replace("Detected Value: ", "").trim();
+            const select = item.querySelector("select");
+            const selectedValue = select.value;
+
+            if (!selectedValue) {
+              showToast("Please assign a project for all items.");
+              return;
+            }
+
+            if (selectedValue === "__create_new__") {
+              const newProjectName = item
+                .querySelector(".new-project-input")
+                .value.trim();
+              if (!newProjectName) {
+                showToast(
+                  `Please enter a new project name for "${userInput}".`
+                );
+                return;
+              }
+              createProjects.push({
+                user_input: userInput,
+                new_project_name: newProjectName,
+              });
+            } else {
+              confirmMatches.push({
+                user_input: userInput,
+                matched_name: selectedValue,
+              });
             }
           }
-          if (selectedValues.length === 0) {
-            alert("Please select at least one project or create a new one.");
-            return;
-          }
-          selectedJob.status = "Accepted to " + selectedValues.join(", ");
+
+          // Data to be passed to the endpoint
+          const dataToPass = {
+            confirm_matches: confirmMatches,
+            create_projects: createProjects,
+          };
+
+          // Set the job status to "Accepted" and store the assignment data
+          selectedJob.status = "Accepted";
+          selectedJob.assignmentData = dataToPass;
+
+          // Hide drag-and-drop section and decision buttons
+          document.getElementById("drag-drop-section").classList.add("hidden");
+          document.getElementById("decision-buttons").classList.add("hidden");
+
+          // Update job list
           updateJobList();
-          alert("Document linked to " + selectedValues.join(", "));
-          document.getElementById("project-modal").style.display = "none";
+
+          // Close modal and return to job list view (no alert; toast can optionally show a success message)
+          document.getElementById("match-modal").style.display = "none";
           document.getElementById("back-to-list").style.display = "none";
           document.getElementById("job-list-header").style.display = "block";
           document.getElementById("job-detail").classList.add("hidden");
           document.getElementById("job-list").style.display = "block";
+
+          // Optionally, you could call showToast("Assignments confirmed") here if desired.
         });
 
       updateJobList();
